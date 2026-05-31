@@ -24,13 +24,31 @@ export async function POST(request: NextRequest) {
       const body = await request.json();
       rawWalletAddress = body.walletAddress;
       blobId = body.blobId;
-      previewUrl = body.previewDataUrl;
+      const base64Data = body.previewDataUrl;
 
-      if (!rawWalletAddress || !blobId || !previewUrl) {
+      if (!rawWalletAddress || !blobId || !base64Data) {
         return NextResponse.json(
           { error: 'Missing required fields: walletAddress, blobId, previewDataUrl' },
           { status: 400 }
         );
+      }
+
+      const match = base64Data.match(/^data:(.*?);base64,(.*)$/);
+      if (match) {
+        const base64Str = match[2];
+        const buffer = Buffer.from(base64Str, 'base64');
+        const publisherUrl = process.env.WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
+        const response = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
+          method: 'PUT',
+          body: buffer,
+        });
+        if (!response.ok) throw new Error('Walrus upload failed for image preview');
+        const result = await response.json();
+        const previewBlobId = result.newlyCreated ? result.newlyCreated.blobObject.blobId : result.alreadyCertified.blobId;
+        const aggregatorUrl = process.env.WALRUS_AGGREGATOR_URL || 'https://aggregator.walrus-testnet.walrus.space';
+        previewUrl = `${aggregatorUrl}/v1/blobs/${previewBlobId}`;
+      } else {
+        previewUrl = base64Data; // Fallback
       }
     } else if (contentType.includes('multipart/form-data')) {
       // Audio / Video / Doc preview — actual file upload
@@ -46,11 +64,20 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Convert file to base64 data-URL for storage
-      // In production replace this with a CDN / Shelby public blob upload
+      // Upload the preview file directly to Walrus
       const arrayBuffer = await previewFile.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      previewUrl = `data:${previewFile.type};base64,${base64}`;
+      const buffer = Buffer.from(arrayBuffer);
+      const publisherUrl = process.env.WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
+      const response = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
+        method: 'PUT',
+        body: buffer,
+      });
+      
+      if (!response.ok) throw new Error('Walrus upload failed for file preview');
+      const result = await response.json();
+      const previewBlobId = result.newlyCreated ? result.newlyCreated.blobObject.blobId : result.alreadyCertified.blobId;
+      const aggregatorUrl = process.env.WALRUS_AGGREGATOR_URL || 'https://aggregator.walrus-testnet.walrus.space';
+      previewUrl = `${aggregatorUrl}/v1/blobs/${previewBlobId}`;
     } else {
       return NextResponse.json({ error: 'Unsupported content type' }, { status: 415 });
     }
