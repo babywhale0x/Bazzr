@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  email         String?
+  username      String?  @unique
+  displayName   String?
+  bio           String?
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  files         File[]
+  purchases     Purchase[]
+  creatorProfile CreatorProfile?
+  subscriptionsAsSubscriber Subscription[] @relation("Subscriber")
+  subscriptionsAsCreator    Subscription[] @relation("Creator")
+  pendingUploads PendingUpload[]
+  storageBalance StorageBalance?
+
+  @@index([walletAddress])
+  @@index([username])
+}
+
+model CreatorProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  isPublic        Boolean  @default(true)
+  customDomain    String?  @unique
+  theme           String   @default("default")
+  bannerUrl       String?
+
+  totalContents   Int      @default(0)
+  totalSales      Int      @default(0)
+  totalEarnings   Decimal  @default(0) @db.Decimal(20, 8)
+
+  subscriptionEnabled Boolean @default(false)
+  subscriptionPrice Decimal @db.Decimal(20, 8) @default(0)
+  subscriptionDescription String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model File {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  blobId          String   @unique
+  rootHash        Bytes
+  size            BigInt
+  contentType     String
+
+  encrypted       Boolean  @default(false)
+  encryptionKey   String?  // Encrypted with user's public key
+
+  name            String
+  description     String?
+  thumbnailUrl    String?
+
+  isPublic        Boolean  @default(false)
+  isPublished     Boolean  @default(false)
+
+  contentId       BigInt?  @unique
+  publishedAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([blobId])
+  @@index([isPublic])
+  @@index([contentId])
+}
+
+model Content {
+  id              BigInt   @id
+  creatorAddress  String
+  title           String
+  description     String?
+  contentType     String
+  walrusBlobId    String
+  previewBlobId   String?
+
+  viewPrice       BigInt   @default(0)
+  borrowPrice     BigInt   @default(0)
+  licensePrice    BigInt   @default(0)
+  commercialPrice BigInt   @default(0)
+  subscriptionPrice BigInt @default(0)
+
+  tags            String[]
+  collectionId    BigInt   @default(0)
+  uploadTimestamp DateTime
+
+  isActive        Boolean  @default(true)
+  cachedAt        DateTime @default(now())
+
+  @@index([creatorAddress])
+  @@index([contentType])
+  @@index([tags])
+  @@index([isActive])
+}
+
+model Purchase {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  purchaseId      BigInt   @unique
+  contentId       BigInt
+  tier            Int
+  amountPaid      Decimal  @db.Decimal(20, 8)
+
+  purchaseTimestamp DateTime
+  expiryTimestamp DateTime?
+  licenseHash     String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([contentId])
+  @@index([expiryTimestamp])
+}
+
+model Subscription {
+  id              String   @id @default(cuid())
+
+  subscriberId    String
+  subscriber      User     @relation("Subscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  creatorId       String
+  creator         User     @relation("Creator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  monthlyAmount   Decimal  @db.Decimal(20, 8)
+  isActive        Boolean  @default(true)
+
+  startDate       DateTime @default(now())
+  lastPaymentDate DateTime @default(now())
+  nextPaymentDate DateTime
+
+  totalPayments   Int      @default(1)
+  totalAmountPaid Decimal  @db.Decimal(20, 8) @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([subscriberId, creatorId])
+  @@index([creatorId])
+  @@index([nextPaymentDate])
+}
+
+model StorageBalance {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  totalBytes      BigInt   @default(0)
+  walletBalance   Decimal  @db.Decimal(20, 8) @default(0)
+
+  lastDeduction   DateTime @default(now())
+  gracePeriodEnd  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PendingUpload {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  blobId          String   @unique
+  fileSize        BigInt
+  contentType     String
+  encrypted       Boolean  @default(true)
+
+  status          String   @default("pending") // pending, completed, failed
+  errorMessage    String?
+  expiresAt       DateTime
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model Collection {
+  id              BigInt   @id
+  creatorAddress  String
+  name            String
+  description     String?
+  coverImageUrl   String?
+  contentIds      BigInt[]
+
+  createdAt       DateTime @default(now())
+
+  @@index([creatorAddress])
+}
