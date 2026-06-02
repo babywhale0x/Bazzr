@@ -83,22 +83,30 @@ export async function POST(request: NextRequest) {
     let walrusBlobId = '';
     
     // Create a 5 second timeout to prevent Vercel serverless function kills
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Walrus upload timeout')), 5000)
-    );
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Walrus upload timeout')), 5000);
+    });
 
     try {
+      const uploadTask = completeUpload(
+        certBlobId,
+        certBuffer,
+        'application/json',
+        certFileName
+      );
+      
+      // Prevent unhandled rejection if it fails after timeout wins
+      uploadTask.catch((err) => console.error('Background upload error:', err.message));
+
       const uploadResult = await Promise.race([
-        completeUpload(
-          certBlobId,
-          certBuffer,
-          'application/json',
-          certFileName
-        ),
+        uploadTask,
         timeoutPromise
       ]) as any;
+      clearTimeout(timeoutId!);
       walrusBlobId = uploadResult.blobName; // This acts as our permanent receipt identifier
     } catch (uploadError) {
+      clearTimeout(timeoutId!);
       console.error('Failed to upload certificate to Walrus:', uploadError);
       // Fallback: If permanent storage fails, we still record the purchase using the txHash
       walrusBlobId = `fallback-${txHash}`;

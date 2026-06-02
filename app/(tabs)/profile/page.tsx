@@ -8,7 +8,7 @@ import {
   Package, DollarSign, Tag, Check, X, Loader2, ArrowUpRight, ArrowDownLeft,
   HardDrive, Clock, Receipt, Shield
 } from 'lucide-react';
-import { formatSui, suiClient } from '@/lib/sui';
+import { formatSui, suiClient, WAL_TOKEN_ADDRESS } from '@/lib/sui';
 import { FiatOnramp } from '@/components/wallet/FiatOnramp';
 import CertificateModal from '@/components/CertificateModal';
 import toast from 'react-hot-toast';
@@ -146,10 +146,9 @@ export default function ProfilePage() {
       const suiBal = await suiClient.getBalance({ owner: address });
       setAptBalance(Number(suiBal.totalBalance || 0));
       
-      // Fetch WAL (mocked or actual coinType if known)
-      const walrusMetadata = '0x9999999999999999999999999999999999999999999999999999999999999999::wal::WAL'; 
+      // Fetch WAL
       try {
-        const walBal = await suiClient.getBalance({ owner: address, coinType: walrusMetadata });
+        const walBal = await suiClient.getBalance({ owner: address, coinType: WAL_TOKEN_ADDRESS });
         setWalrusBalance(Number(walBal.totalBalance || 0));
       } catch (e) {
         setWalrusBalance(0);

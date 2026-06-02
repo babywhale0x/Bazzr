@@ -39,12 +39,11 @@ export async function GET(request: NextRequest) {
     // Fetch WAL from Sui RPC
     let walrusBalance = BigInt(0);
     try {
-      const { suiClient } = await import('@/lib/sui');
-      const walrusMetadata = '0x9999999999999999999999999999999999999999999999999999999999999999::wal::WAL';
+      const { suiClient, WAL_TOKEN_ADDRESS } = await import('@/lib/sui');
       try {
         const balance = await suiClient.getBalance({
           owner: targetWallet,
-          coinType: walrusMetadata
+          coinType: WAL_TOKEN_ADDRESS
         });
         walrusBalance = BigInt(balance.totalBalance);
       } catch (e) {
