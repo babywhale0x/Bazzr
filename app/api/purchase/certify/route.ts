@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // If we already have it (e.g. client retried), just return the existing hash
-      walrusBlobId = purchase.licenseHash;
+      walrusBlobId = purchase.licenseHash || `fallback-${txHash}`;
     }
 
     // 6. Upload Certificate to Permanent storage (Walrus)
