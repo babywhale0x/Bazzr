@@ -72,15 +72,36 @@ export async function POST(request: NextRequest) {
       citation: citation
     };
 
-    // 5. Upload Certificate to Permanent storage (Walrus)
+    // 5. Save Purchase to Database IMMEDIATELY to prevent duplicate spends on timeout
+    // We use the fallback as the initial permanent receipt
+    let walrusBlobId = `fallback-${txHash}`;
+    let purchase = await prisma.purchase.findFirst({
+      where: { transactionHash: txHash }
+    });
+
+    if (!purchase) {
+      purchase = await prisma.purchase.create({
+        data: {
+          userId: user.id,
+          purchaseId: BigInt(Date.now()), // Unique internal ID
+          contentId: BigInt(contentId),
+          tier: Number(tier),
+          amountPaid: amount || 0,
+          purchaseTimestamp: new Date(),
+          licenseHash: walrusBlobId, 
+          transactionHash: txHash,
+        },
+      });
+    } else {
+      // If we already have it (e.g. client retried), just return the existing hash
+      walrusBlobId = purchase.licenseHash;
+    }
+
+    // 6. Upload Certificate to Permanent storage (Walrus)
     const certString = JSON.stringify(certificate, null, 2);
     const certBuffer = Buffer.from(certString, 'utf-8');
-    
-    // Generate a unique ID for the certificate blob
     const certBlobId = `cert-${contentId}-${Date.now()}`;
     const certFileName = `certificate.json`;
-
-    let walrusBlobId = '';
     
     // Create a 5 second timeout to prevent Vercel serverless function kills
     let timeoutId: NodeJS.Timeout;
@@ -104,28 +125,18 @@ export async function POST(request: NextRequest) {
         timeoutPromise
       ]) as any;
       clearTimeout(timeoutId!);
-      walrusBlobId = uploadResult.blobName; // This acts as our permanent receipt identifier
+      walrusBlobId = uploadResult.blobName; 
+
+      // Update the DB with the real Walrus Blob ID
+      await prisma.purchase.update({
+        where: { id: purchase.id },
+        data: { licenseHash: walrusBlobId }
+      });
     } catch (uploadError) {
       clearTimeout(timeoutId!);
       console.error('Failed to upload certificate to Walrus:', uploadError);
-      // Fallback: If permanent storage fails, we still record the purchase using the txHash
-      walrusBlobId = `fallback-${txHash}`;
+      // We already have the fallback saved in the DB, so we can just proceed
     }
-
-    // 6. Save Purchase to Database with License Hash & Tx Hash
-    // We use the Walrus Blob URL (or fallback) as the permanent licenseHash
-    const purchase = await prisma.purchase.create({
-      data: {
-        userId: user.id,
-        purchaseId: BigInt(Date.now()), // Unique internal ID
-        contentId: BigInt(contentId),
-        tier: Number(tier),
-        amountPaid: amount || 0,
-        purchaseTimestamp: new Date(),
-        licenseHash: walrusBlobId, 
-        transactionHash: txHash,
-      },
-    });
 
     return NextResponse.json({ 
       success: true, 
