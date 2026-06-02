@@ -79,3 +79,73 @@ function hexToBuf(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+import { Transform } from 'stream';
+import crypto from 'crypto';
+
+/**
+ * A Node.js Transform stream that decrypts an AES-256-GCM stream.
+ * It expects the format: [12-byte IV] [Ciphertext] [16-byte Auth Tag].
+ */
+export class GcmDecryptStream extends Transform {
+  private decipher: crypto.DecipherGCM | null = null;
+  private key: Buffer;
+  private buffer: Buffer = Buffer.alloc(0);
+  private iv: Buffer | null = null;
+
+  constructor(keyHex: string) {
+    super();
+    this.key = Buffer.from(keyHex.startsWith('0x') ? keyHex.slice(2) : keyHex, 'hex');
+  }
+
+  _transform(chunk: Buffer, encoding: string, callback: Function) {
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+
+    // We need at least 12 bytes for IV
+    if (!this.iv) {
+      if (this.buffer.length >= 12) {
+        this.iv = this.buffer.subarray(0, 12);
+        this.buffer = this.buffer.subarray(12);
+        this.decipher = crypto.createDecipheriv('aes-256-gcm', this.key, this.iv);
+      } else {
+        return callback(); // Need more data
+      }
+    }
+
+    // We must always keep at least 16 bytes in the buffer for the auth tag
+    if (this.buffer.length > 16) {
+      const bytesToProcess = this.buffer.length - 16;
+      const dataToProcess = this.buffer.subarray(0, bytesToProcess);
+      this.buffer = this.buffer.subarray(bytesToProcess);
+
+      try {
+        const decrypted = this.decipher!.update(dataToProcess);
+        if (decrypted.length > 0) {
+          this.push(decrypted);
+        }
+      } catch (err) {
+        return callback(err);
+      }
+    }
+    callback();
+  }
+
+  _flush(callback: Function) {
+    if (!this.decipher) {
+      return callback(new Error('Stream ended before IV was received'));
+    }
+    if (this.buffer.length !== 16) {
+      return callback(new Error(`Invalid auth tag length: expected 16, got ${this.buffer.length}`));
+    }
+    try {
+      this.decipher.setAuthTag(this.buffer);
+      const final = this.decipher.final();
+      if (final.length > 0) {
+        this.push(final);
+      }
+      callback();
+    } catch (err) {
+      callback(err);
+    }
+  }
+}
