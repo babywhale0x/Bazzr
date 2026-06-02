@@ -36,7 +36,7 @@ export default function HomePage() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary bg-primary-light px-3 py-1 rounded-full mb-6 tracking-[0.02em] before:content-[''] before:w-1.5 before:h-1.5 before:rounded-full before:bg-primary before:inline-block"
           >
-            Built on Aptos & Walrus
+            Built on Sui & Walrus
           </motion.div>
           <h1 className="text-[clamp(2rem,4vw,3rem)] font-medium text-text-primary leading-[1.2] tracking-[-0.02em] max-w-[560px] mb-5">
             <MatrixText text="Your files." delay={0} /><br/>
@@ -139,7 +139,7 @@ export default function HomePage() {
                 <ShieldCheck className="w-[18px] h-[18px] text-primary" strokeWidth={1.75} />
               </div>
               <h3 className="text-[15px] font-medium text-text-primary mb-2">Uncensorable</h3>
-              <p className="text-[14px] text-text-secondary leading-[1.65]">Content hash-committed on Aptos blockchain. No platform can take down your work or freeze your earnings.</p>
+              <p className="text-[14px] text-text-secondary leading-[1.65]">Content hash-committed on Sui blockchain. No platform can take down your work or freeze your earnings.</p>
             </div>
           </div>
         </div>
@@ -344,7 +344,7 @@ export default function HomePage() {
         <div className="max-w-[1440px] mx-auto px-8">
           <div className="flex items-center justify-between">
             <div className="text-[14px] font-medium text-text-primary">
-              Verixa <small className="font-normal text-[12px] text-text-muted ml-2">Built on Aptos & Walrus</small>
+              Verixa <small className="font-normal text-[12px] text-text-muted ml-2">Built on Sui & Walrus</small>
             </div>
             <ul className="flex gap-6 list-none">
               <li><Link href="/explore" className="text-[13px] text-text-muted hover:text-text-secondary transition-colors">Explore</Link></li>

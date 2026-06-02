@@ -13,7 +13,7 @@ export default function CertificateModal({ isOpen, onClose, purchase }: Certific
   const tierName = getTierName(purchase.tier);
   const tierIcon = getTierIcon(purchase.tier);
 
-  // Fallbacks for Shelby URL + TxHash parsing depending on if it's new or old purchases
+  // Fallbacks for Walrus URL + TxHash parsing depending on if it's new or old purchases
   const isWalrusUrl = purchase.licenseHash && !purchase.licenseHash.startsWith('fallback-');
   const walrusLink = isWalrusUrl ? `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${purchase.licenseHash}` : null;
   const rawTxHash = purchase.licenseHash?.startsWith('fallback-') 

@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       citation: citation
     };
 
-    // 5. Upload Certificate to Permanent storage (Shelby)
+    // 5. Upload Certificate to Permanent storage (Walrus)
     const certString = JSON.stringify(certificate, null, 2);
     const certBuffer = Buffer.from(certString, 'utf-8');
     
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Save Purchase to Database with License Hash & Tx Hash
-    // We use the Shelby Blob URL (or fallback) as the permanent licenseHash
+    // We use the Walrus Blob URL (or fallback) as the permanent licenseHash
     const purchase = await prisma.purchase.create({
       data: {
         userId: user.id,
