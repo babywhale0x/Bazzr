@@ -7,7 +7,7 @@ async function test() {
     body: JSON.stringify({
       txHash: '0x123',
       tier: 2,
-      contentId: 5,
+      contentId: "invalid_bigint",
       buyerAddress: '0x9e302a0da809a6d600b8d9324bc1e905937a6dd7506231f54c21550fb8a34654',
       amount: 5000000
     })
