@@ -244,7 +244,7 @@ export default function CreatePage() {
           while (!uploadSuccess && uploadRetries < 3) {
             try {
               const publisherUrl = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
-              const response = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
+              const response = await fetch(`${publisherUrl}/v1/blobs?epochs=365`, {
                 method: 'PUT',
                 body: new Blob([encryptedData as any]),
               });

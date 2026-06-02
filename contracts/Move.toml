@@ -1,13 +1,9 @@
 [package]
 name = "verixa"
-version = "1.0.0"
 edition = "2024"
-authors = ["Verixa Team"]
 
 [dependencies]
-AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "testnet", subdir = "aptos-move/framework/aptos-framework" }
-AptosStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", rev = "testnet", subdir = "aptos-move/framework/aptos-stdlib" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-verixa = "0xc632fe797e5358ecbb61a7b81366877e59ce087cdfbbe9c5b4f49f5b7535521b"
-std = "0x1"
+verixa = "0x0"
