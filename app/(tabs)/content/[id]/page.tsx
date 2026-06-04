@@ -210,8 +210,15 @@ export default function ContentDetailPage() {
         });
         
         if (!certRes.ok) {
-          const errData = await certRes.json();
-          throw new Error(errData.error || 'Failed to generate certificate');
+          let errMsg = 'Failed to generate certificate';
+          try {
+            const errData = await certRes.json();
+            errMsg = errData.error || errMsg;
+          } catch {
+            const rawText = await certRes.text();
+            errMsg = `Server error ${certRes.status}: ${rawText.slice(0, 150)}`;
+          }
+          throw new Error(errMsg);
         }
         toast.success('Purchase successful! Certificate generated.');
       } catch (err: any) {
