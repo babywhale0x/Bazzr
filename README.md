@@ -1,4 +1,4 @@
-# Bazzr
+# Verixa App
 
 A decentralized storage, content monetization, and creator marketplace platform built on the **Sui Network** and **Walrus Protocol**.
 
@@ -21,7 +21,7 @@ A decentralized storage, content monetization, and creator marketplace platform 
 - **Wallet Standard**: `@mysten/dapp-kit`
 
 ### 1. Tatum Integration
-Bazzr integrates Tatum APIs at multiple levels to ensure robust blockchain connectivity and rich user dashboards:
+Verixa App integrates Tatum APIs at multiple levels to ensure robust blockchain connectivity and rich user dashboards:
 - **Tatum Sui RPC Gateway**: Server-side client calls route directly through Tatum's high-speed endpoints (`https://sui-testnet.gateway.tatum.io`).
 - **Secure RPC Proxy**: The frontend interacts with Sui wallets through a custom browser proxy endpoint `/api/sui-rpc` which forwards requests to Tatum. This hides the Tatum API key and prevents client-side CORS issues.
 - **Tatum Exchange Rate API**: Hits Tatum's `/v3/tatum/rate/SUI` Data API endpoint via `/api/tatum/exchange-rate` to calculate and display the live fiat USD value of the user's SUI balance on their profile dashboard.
@@ -39,8 +39,8 @@ Files are stored securely and permanently using Walrus:
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/babywhale0x/Bazzr.git
-cd Bazzr
+git clone https://github.com/babywhale0x/verixa-app.git
+cd verixa-app
 npm install
 ```
 
@@ -93,11 +93,11 @@ npm run db:seed
 
 ### 4. Deploy Smart Contracts (Sui Testnet)
 
-Sui Move contracts are located in `sui_contracts/marketplace`.
+Sui Move contracts are located in `contracts`.
 
 ```bash
 # Compile and build the package
-cd sui_contracts/marketplace
+cd contracts
 sui client build
 
 # Publish to testnet
@@ -117,7 +117,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Project Structure
 
 ```
-Bazzr/
+verixa-app/
 ├── app/                    # Next.js app router pages & endpoints
 │   ├── api/               # API endpoints (decryption, profile, storage, stripe)
 │   ├── (tabs)/            # Main app tabs (home, explore, create, vault, profile)
@@ -125,8 +125,8 @@ Bazzr/
 ├── components/            # Shared React components (CertificateModal, FiatOnramp, etc.)
 │   ├── wallet/           # Sui Dapp Kit wallet providers and connect buttons
 │   └── ...
-├── sui_contracts/         # Sui Move smart contracts
-│   └── marketplace/      # Move package files
+├── contracts/             # Sui Move smart contracts
+│   └── sources/          # Move package files
 ├── lib/                  # Backend and utility libraries
 │   ├── sui.ts            # Sui client setup & RPC helpers
 │   ├── walrus.ts         # Walrus client & publisher/aggregator interface
@@ -138,7 +138,7 @@ Bazzr/
 
 ## Smart Contracts (Sui Move)
 
-### Marketplace Contract (`sui_contracts/marketplace/sources/marketplace.move`)
+### Marketplace Contract (`contracts/sources/verixa.move`)
 - `publish_content`: Register new digital items with specific tier-based access rights and pricing.
 - `purchase_access`: Process a purchase transaction, routing SUI directly to the creator while locking in license credentials.
 - `claim_earnings`: Safe extraction of accrued fees and sales directly to wallets.
