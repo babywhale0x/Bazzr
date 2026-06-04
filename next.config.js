@@ -1,14 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['@mysten/walrus', '@mysten/sui'],
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
     },
   },
   webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('@mysten/walrus');
-    }
     config.resolve.fallback = {
       ...config.resolve.fallback,
       '@telegram-apps/bridge': false,
