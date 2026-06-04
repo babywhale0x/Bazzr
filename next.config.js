@@ -19,6 +19,27 @@ const nextConfig = {
       'dns': false,
       'child_process': false,
     };
+    if (isServer) {
+      config.plugins.push({
+        apply: (compiler) => {
+          compiler.hooks.afterEmit.tap('CopyWasmPlugin', () => {
+            const fs = require('fs');
+            const path = require('path');
+            const wasmSource = path.join(compiler.context, 'node_modules/@mysten/walrus/dist/walrus_wasm_bg.wasm');
+            const wasmDestDir = path.join(compiler.context, '.next/server/chunks');
+            const wasmDest = path.join(wasmDestDir, 'walrus_wasm_bg.wasm');
+
+            if (fs.existsSync(wasmSource)) {
+              if (!fs.existsSync(wasmDestDir)) {
+                fs.mkdirSync(wasmDestDir, { recursive: true });
+              }
+              fs.copyFileSync(wasmSource, wasmDest);
+              console.log('Successfully copied walrus_wasm_bg.wasm to server chunks directory.');
+            }
+          });
+        }
+      });
+    }
     return config;
   },
   images: {
