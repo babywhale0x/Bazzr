@@ -211,11 +211,11 @@ export default function ContentDetailPage() {
         
         if (!certRes.ok) {
           let errMsg = 'Failed to generate certificate';
+          const rawText = await certRes.text();
           try {
-            const errData = await certRes.json();
+            const errData = JSON.parse(rawText);
             errMsg = errData.error || errMsg;
           } catch {
-            const rawText = await certRes.text();
             errMsg = `Server error ${certRes.status}: ${rawText.slice(0, 150)}`;
           }
           throw new Error(errMsg);
