@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { downloadBlob } from '@/lib/walrus';
 import { prisma } from '@/lib/db';
-import { decryptData } from '@/lib/encryption';
+import { decryptData, GcmDecryptStream } from '@/lib/encryption';
+import { Readable } from 'stream';
 
 export async function GET(
   request: NextRequest,
@@ -92,11 +93,8 @@ export async function GET(
         headers.set('Content-Length', newLen.toString());
       }
 
-      const { Readable } = await import('stream');
-      const { GcmDecryptStream } = await import('@/lib/encryption');
-
       // Convert Web Stream from fetch to Node.js Readable stream
-      const nodeReadable = Readable.fromWeb(walrusResponse.body as import('stream/web').ReadableStream);
+      const nodeReadable = Readable.fromWeb(walrusResponse.body as any);
       const decryptStream = new GcmDecryptStream(file.encryptionKey);
       
       // Pipe through our streaming decryptor
@@ -126,10 +124,10 @@ export async function GET(
     }
 
     return new NextResponse(walrusResponse.body, { headers });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Download failed:', error);
     return NextResponse.json(
-      { error: 'Failed to retrieve file' },
+      { error: error.message || 'Failed to retrieve file' },
       { status: 500 }
     );
   }

@@ -49,3 +49,14 @@ build/
 *.log
 .vercel
 *.tsbuildinfo
+
+# Bazzr Scratch & Test Files
+scratch/
+test_api.js
+check_db.js
+mcp-wrapper.js
+lib/db/client/
+
+# Submission files
+SUBMISSION.md
+submission.md

@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       isPublic,
       description,
       previewUrl,
+      previewContentType,
       // Encryption fields
       encrypted,
       encryptionKey,
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
         publishedAt: isPublished ? new Date() : null,
         description: description || null,
         previewUrl: previewUrl || null,
+        previewContentType: previewContentType || null,
       },
       update: {
         isPublic: isPublic || false,
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest) {
         contentId: onChainContentId ? BigInt(onChainContentId) : undefined,
         publishedAt: isPublished ? new Date() : undefined,
         previewUrl: previewUrl || undefined,
+        previewContentType: previewContentType || undefined,
       },
     });
 
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
           contentType,
           walrusBlobId: blobId,
           previewCid: previewUrl || null,
+          previewContentType: previewContentType || null,
           streamPrice: BigInt(streamPrice || 0),
           citePrice: BigInt(citePrice || 0),
           licensePrice: BigInt(licensePrice || 0),
@@ -98,6 +102,7 @@ export async function POST(request: NextRequest) {
           title: name,
           description: description || '',
           previewCid: previewUrl || undefined,
+          previewContentType: previewContentType || undefined,
           tags: allTags,
         },
       });

@@ -1,15 +1,27 @@
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { SuiJsonRpcClient, JsonRpcHTTPTransport } from '@mysten/sui/jsonRpc';
 
-// Initialize Sui client
+// Initialize Sui client — server-side uses Tatum RPC directly
 const network = (process.env.NEXT_PUBLIC_SUI_NETWORK as 'mainnet' | 'testnet' | 'devnet' | 'localnet') || 'testnet';
+const tatumApiKey = process.env.TATUM_SUI_API_KEY || 't-6a15087f8e1cdc441253b0ce-b0398dce955840859730f0d9';
+const tatumUrl = network === 'mainnet'
+  ? 'https://sui-mainnet.gateway.tatum.io'
+  : 'https://sui-testnet.gateway.tatum.io';
+
 export const suiClient = new SuiJsonRpcClient({
-  url: network === 'mainnet' ? 'https://fullnode.mainnet.sui.io:443' : 'https://fullnode.testnet.sui.io:443',
   network,
+  transport: new JsonRpcHTTPTransport({
+    url: tatumUrl,
+    rpc: {
+      headers: { 'x-api-key': tatumApiKey },
+    },
+  }),
 });
 
 // Contract addresses
 export const VERIXA_PACKAGE_ID = process.env.NEXT_PUBLIC_VERIXA_PACKAGE_ID || '';
-export const WAL_TOKEN_ADDRESS = '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL';
+export const WAL_TOKEN_ADDRESS = network === 'mainnet'
+  ? '0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL'
+  : '0x8270feb7375eee355e64fdb69c50abb6b5f9393a722883c1cf45f8e26048810a::wal::WAL';
 
 // Module names
 export const MARKETPLACE_MODULE = `${VERIXA_PACKAGE_ID}::verixa`;

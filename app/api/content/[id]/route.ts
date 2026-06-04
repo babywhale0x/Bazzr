@@ -25,6 +25,7 @@ export async function GET(
       contentType: content.contentType,
       walrusBlobId: content.walrusBlobId,
       previewUrl: content.previewCid || null,
+      previewContentType: content.previewContentType || null,
       streamPrice: content.streamPrice.toString(),
       citePrice: content.citePrice.toString(),
       licensePrice: content.licensePrice.toString(),

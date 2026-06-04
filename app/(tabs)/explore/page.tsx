@@ -13,6 +13,7 @@ interface Content {
   description: string;
   contentType: string;
   previewUrl?: string;
+  previewContentType?: string;
   streamPrice: string;
   citePrice: string;
   licensePrice: string;
@@ -79,7 +80,7 @@ function ContentCard({ content }: { content: Content }) {
     >
       {/* Preview area */}
       <div className="aspect-video relative flex items-center justify-center overflow-hidden bg-bg border-b border-border">
-        {content.previewUrl && content.contentType.startsWith('image/') ? (
+        {content.previewUrl && (content.contentType.startsWith('image/') || (content.previewContentType && content.previewContentType.startsWith('image/'))) ? (
           <img src={content.previewUrl} alt={content.title} className="w-full h-full object-cover" />
         ) : (
           <TypeIcon className="w-[32px] h-[32px] text-text-muted" strokeWidth={1.25} />

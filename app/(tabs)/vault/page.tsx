@@ -162,26 +162,25 @@ export default function VaultPage() {
           const rawData = new Uint8Array(await file.arrayBuffer());
           const encryptedData = await encryptData(rawData, encKey);
 
-          // Step 2: Upload ENCRYPTED data directly to Walrus Publisher
+          // Step 2: Upload ENCRYPTED data via Server-Side Proxy (bypasses CORS)
           let walrusBlobId = '';
           let uploadRetries = 0;
           let uploadSuccess = false;
           while (!uploadSuccess && uploadRetries < 3) {
             try {
-              const publisherUrl = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
-              const response = await fetch(`${publisherUrl}/v1/blobs?epochs=5`, {
+              const response = await fetch(`/api/upload/proxy?epochs=5`, {
                 method: 'PUT',
-                body: new Blob([encryptedData as any]),
+                body: encryptedData as any, // Pass raw Uint8Array directly
               });
-              if (!response.ok) throw new Error(`Walrus HTTP error: ${response.status}`);
+              if (!response.ok) throw new Error(`Walrus proxy HTTP error: ${response.status}`);
               const result = await response.json();
               walrusBlobId = result.newlyCreated ? result.newlyCreated.blobObject.blobId : result.alreadyCertified.blobId;
               uploadSuccess = true;
             } catch (err: any) {
               uploadRetries++;
-              console.warn(`Walrus upload attempt ${uploadRetries} failed:`, err);
+              console.warn(`Walrus upload attempt ${uploadRetries} failed via proxy:`, err);
               if (uploadRetries >= 3) throw new Error(`Walrus upload failed after 3 attempts.`);
-              await new Promise(r => setTimeout(r, 3000));
+              await new Promise(r => setTimeout(r, 2000));
             }
           }
 

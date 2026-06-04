@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
       description: c.description || '',
       contentType: c.contentType,
       previewUrl: c.previewCid || null,
+      previewContentType: c.previewContentType || null,
       walrusBlobId: c.walrusBlobId,
       streamPrice: c.streamPrice.toString(),
       citePrice: c.citePrice.toString(),

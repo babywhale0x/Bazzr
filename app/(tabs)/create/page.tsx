@@ -220,6 +220,7 @@ export default function CreatePage() {
       // Track the total on-chain items for this creator to ensure we capture the distinct new additions
       const { getCreatorContents } = await import('@/lib/contract-queries');
       let previousContentIds = await getCreatorContents(account.address.toString());
+      let successfulUploads = 0;
 
       for (let i = 0; i < stagedFiles.length; i++) {
         const file = stagedFiles[i];
@@ -237,28 +238,28 @@ export default function CreatePage() {
           const rawData = new Uint8Array(await file.arrayBuffer());
           const encryptedData = await encryptData(rawData, encKey);
 
-          // Step 2 & 3 & 4: Upload ENCRYPTED data directly to Walrus Publisher
+          // Step 2 & 3 & 4: Upload ENCRYPTED data via Server-Side Proxy (bypasses CORS)
           let uploadSuccess = false;
           let uploadRetries = 0;
           let walrusBlobId = '';
+          
           while (!uploadSuccess && uploadRetries < 3) {
             try {
-              const publisherUrl = process.env.NEXT_PUBLIC_WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
-              const response = await fetch(`${publisherUrl}/v1/blobs?epochs=365`, {
+              const response = await fetch(`/api/upload/proxy?epochs=5`, {
                 method: 'PUT',
-                body: new Blob([encryptedData as any]),
+                body: encryptedData as any, // Pass raw Uint8Array directly
               });
-              if (!response.ok) throw new Error(`Walrus HTTP error: ${response.status}`);
+              if (!response.ok) throw new Error(`Walrus proxy HTTP error: ${response.status}`);
               const result = await response.json();
               walrusBlobId = result.newlyCreated ? result.newlyCreated.blobObject.blobId : result.alreadyCertified.blobId;
               uploadSuccess = true;
             } catch (err: any) {
               uploadRetries++;
-              console.warn(`Walrus upload attempt ${uploadRetries} failed:`, err);
+              console.warn(`Walrus upload attempt ${uploadRetries} failed via proxy:`, err);
               if (uploadRetries >= 3) {
                 throw new Error(`Walrus upload failed after 3 attempts.`);
               }
-              await new Promise(r => setTimeout(r, 3000));
+              await new Promise(r => setTimeout(r, 2000));
             }
           }
 
@@ -277,16 +278,29 @@ export default function CreatePage() {
             });
           } else if (previewFile && i === 0) {
             // Preview clip only applies to the first file in a batch for audio/video/docs
-            const previewFormData = new FormData();
-            previewFormData.append('previewFile', previewFile);
-            previewFormData.append('walletAddress', account.address.toString());
-            previewFormData.append('blobId', blobName);
-            const previewRes = await fetch('/api/upload/preview', { method: 'POST', body: previewFormData });
-            if (previewRes.ok) previewUrl = (await previewRes.json()).previewUrl;
+            // Upload preview to Walrus via proxy (same as main upload, but unencrypted)
+            const previewBytes = new Uint8Array(await previewFile.arrayBuffer());
+            const previewUploadRes = await fetch('/api/upload/proxy?epochs=5', {
+              method: 'PUT',
+              body: previewBytes as any,
+            });
+            if (previewUploadRes.ok) {
+              const previewResult = await previewUploadRes.json();
+              const previewBlobId = previewResult.newlyCreated
+                ? previewResult.newlyCreated.blobObject.blobId
+                : previewResult.alreadyCertified.blobId;
+              previewUrl = `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${previewBlobId}`;
+            }
           }
 
           // Publish to marketplace FIRST to get the on-chain content ID
           const rootBytes = Array.from(new Uint8Array(32)); // Dummy hash for Walrus
+          
+          let onChainPreviewId = '';
+          if (previewUrl) {
+            const parts = previewUrl.split('/');
+            onChainPreviewId = parts[parts.length - 1] || '';
+          }
 
           const tx = new Transaction();
           tx.moveCall({
@@ -299,7 +313,7 @@ export default function CreatePage() {
                tx.pure.string(file.type),
                tx.pure.string(walrusBlobId),
                tx.pure.vector('u8', rootBytes),
-               tx.pure.string(walrusBlobId),
+               tx.pure.string(onChainPreviewId),
                tx.pure.u64(streamPrice),
                tx.pure.u64(citePrice),
                tx.pure.u64(licensePrice),
@@ -339,6 +353,7 @@ export default function CreatePage() {
               categories: selectedCategories,
               tags: tagList,
               previewUrl,
+              previewContentType: previewFile ? previewFile.type : (file.type.startsWith('image/') && generatedPreviews[i] ? 'image/png' : null),
               streamPrice,
               citePrice,
               licensePrice,
@@ -353,6 +368,7 @@ export default function CreatePage() {
           }
 
           toast.success(`Published: ${finalTitle}`, { id: 'upload' });
+          successfulUploads++;
           
           // Final delay before the NEXT file in the loop starts, to reset wallet state completely
           if (i < stagedFiles.length - 1) {
@@ -364,10 +380,15 @@ export default function CreatePage() {
         }
       }
 
-      toast.success(
-        stagedFiles.length === 1 ? 'Content published!' : `${stagedFiles.length} items published!`,
-        { id: 'upload' }
-      );
+      if (successfulUploads > 0) {
+        toast.success(
+          successfulUploads === 1 ? 'Content published!' : `${successfulUploads} items published!`,
+          { id: 'upload' }
+        );
+      } else {
+        toast.dismiss('upload');
+      }
+      
       fetchRecentCreations();
       resetAll();
     } catch (error: any) {

@@ -10,12 +10,15 @@
 
 /** Generate a random AES-256-GCM key and return it as a hex string. */
 export async function generateEncryptionKey(): Promise<string> {
-  const key = await crypto.subtle.generateKey(
+  if (!globalThis.crypto || !globalThis.crypto.subtle) {
+    throw new Error('Encryption requires a secure context (HTTPS or localhost).');
+  }
+  const key = await globalThis.crypto.subtle.generateKey(
     { name: 'AES-GCM', length: 256 },
     true,           // extractable
     ['encrypt', 'decrypt'],
   );
-  const raw = await crypto.subtle.exportKey('raw', key);
+  const raw = await globalThis.crypto.subtle.exportKey('raw', key);
   return bufToHex(new Uint8Array(raw));
 }
 
@@ -25,15 +28,15 @@ export async function encryptData(
   keyHex: string,
 ): Promise<Uint8Array> {
   const keyBuf = hexToBuf(keyHex);
-  const key = await crypto.subtle.importKey(
-    'raw', keyBuf.buffer as ArrayBuffer, { name: 'AES-GCM' }, false, ['encrypt'],
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw', keyBuf as any, { name: 'AES-GCM' }, false, ['encrypt'],
   );
 
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await globalThis.crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
-    data.buffer as ArrayBuffer,
+    data as any,
   );
 
   // Prepend IV to ciphertext
@@ -49,17 +52,17 @@ export async function decryptData(
   keyHex: string,
 ): Promise<Uint8Array> {
   const keyBuf = hexToBuf(keyHex);
-  const key = await crypto.subtle.importKey(
-    'raw', keyBuf.buffer as ArrayBuffer, { name: 'AES-GCM' }, false, ['decrypt'],
+  const key = await globalThis.crypto.subtle.importKey(
+    'raw', keyBuf as any, { name: 'AES-GCM' }, false, ['decrypt'],
   );
 
   const iv = encryptedData.slice(0, 12);
   const ciphertext = encryptedData.slice(12);
 
-  const plaintext = await crypto.subtle.decrypt(
+  const plaintext = await globalThis.crypto.subtle.decrypt(
     { name: 'AES-GCM', iv },
     key,
-    ciphertext.buffer as ArrayBuffer,
+    ciphertext as any,
   );
 
   return new Uint8Array(plaintext);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 // GET all files uploaded by a user (published + delisted)
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +28,7 @@ export async function GET(request: NextRequest) {
         isPublic: true,
         encrypted: true,
         previewUrl: true,
+        previewContentType: true,
         description: true,
         createdAt: true,
         contentId: true,

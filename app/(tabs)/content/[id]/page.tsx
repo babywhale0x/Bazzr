@@ -16,6 +16,7 @@ interface ContentDetail {
   description: string;
   contentType: string;
   previewUrl?: string;
+  previewContentType?: string;
   walrusBlobId?: string;
   streamPrice: string;
   citePrice: string;
@@ -220,9 +221,18 @@ export default function ContentDetailPage() {
 
       // Re-fetch to update access dynamically
       setTimeout(() => checkAccess(content), 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Purchase failed:', error);
-      toast.error('Purchase failed');
+      const msg = error?.message || 'Unknown error';
+      if (msg.includes('Rejected')) {
+        toast.error('Transaction was rejected by wallet');
+      } else if (msg.includes('InsufficientBalance') || msg.includes('insufficient')) {
+        toast.error('Insufficient SUI balance for this purchase');
+      } else if (msg.includes('EContentNotFound')) {
+        toast.error('Content not found on-chain. It may not be published yet.');
+      } else {
+        toast.error(`Purchase failed: ${msg.slice(0, 120)}`);
+      }
     } finally {
       setIsPurchasing(false);
       setSelectedTier(null);
@@ -284,7 +294,7 @@ export default function ContentDetailPage() {
                         onError={handleMediaError}
                       />
                     </div>
-                  ) : content.contentType.startsWith('video/') ? (
+                  ) : (content.contentType.startsWith('video/') && (hasAccess || (content.previewContentType && !content.previewContentType.startsWith('image/')))) ? (
                     <video 
                       src={mediaUrl} 
                       poster={content.previewUrl}

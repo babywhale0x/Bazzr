@@ -8,18 +8,31 @@ A decentralized storage, content monetization, and creator marketplace platform 
 - **Creator Marketplace**: Publish, manage, and monetize creative content.
 - **Multiple Access Tiers**: Stream (In-App), Cite (On-Chain Reference), License (Local Use), and Commercial Rights.
 - **Direct & Secure Payments**: Direct peer-to-peer payments on-chain with minimal platform fees.
-- **Fiat Onramp**: Optional Stripe integration for credit card and non-crypto purchases.
 - **Encrypted Vault**: Private client-side encrypted storage for your personal files.
 - **On-Chain Certificates**: One-click verification of license agreements, content ownership, and transactions on the Sui and Walrus explorers.
 
-## Tech Stack
+## Tech Stack & Integrations
 
-- **Frontend**: Next.js 14, React, TypeScript, Vanilla CSS / Tailwind CSS
-- **Blockchain**: Sui Network (Move smart contracts)
-- **Decentralized Storage**: Walrus Protocol
-- **Database**: PostgreSQL with Prisma ORM (Supabase connection pooler)
-- **Payments**: Stripe for fiat onramp
-- **Wallet**: `@mysten/dapp-kit` (Sui Wallet Standard compatible wallets)
+- **Frontend**: Next.js 14 (App Router), React, TypeScript, Vanilla CSS
+- **Blockchain Interface & RPC**: **Tatum Gateway** (Sui RPC)
+- **Decentralized Storage**: **Walrus Protocol**
+- **Database**: PostgreSQL with Prisma ORM (Supabase)
+- **Payments**: Stripe (Fiat Onramp)
+- **Wallet Standard**: `@mysten/dapp-kit`
+
+### 1. Tatum Integration
+Bazzr integrates Tatum APIs at multiple levels to ensure robust blockchain connectivity and rich user dashboards:
+- **Tatum Sui RPC Gateway**: Server-side client calls route directly through Tatum's high-speed endpoints (`https://sui-testnet.gateway.tatum.io`).
+- **Secure RPC Proxy**: The frontend interacts with Sui wallets through a custom browser proxy endpoint `/api/sui-rpc` which forwards requests to Tatum. This hides the Tatum API key and prevents client-side CORS issues.
+- **Tatum Exchange Rate API**: Hits Tatum's `/v3/tatum/rate/SUI` Data API endpoint via `/api/tatum/exchange-rate` to calculate and display the live fiat USD value of the user's SUI balance on their profile dashboard.
+- **Tatum Transaction API**: Uses Tatum RPC (`suix_queryTransactionBlocks`) via `/api/tatum/transactions` to query and display the user's incoming and outgoing transaction history dynamically.
+
+### 2. Walrus Protocol Integration
+Files are stored securely and permanently using Walrus:
+- **Client-Side Encryption**: Files uploaded to the Vault or Creator Marketplace are encrypted locally using symmetric AES-256-GCM before upload, keeping content private.
+- **Walrus Publisher Integration**: Uploads the encrypted blob payload directly to the Walrus network, registering it on-chain and returning a unique `blobId`.
+- **Walrus Aggregator Fallbacks**: Fetches and decodes content dynamically via proxy `/api/download/[blobId]`. Leverages reliable testnet aggregators (like `staketab.org`) to work around TLS incompatibilities in standard Node.js clients.
+- **Storage Fee Tracking**: Retrieves actual Walrus storage cost and epoch expiry values to display storage usage and file expiration statistics inside the user dashboard.
 
 ## Quick Start
 

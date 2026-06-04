@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../lib/db/client"
 }
 
 datasource db {
@@ -58,6 +59,7 @@ model File {
   description   String?
   thumbnailUrl  String?
   previewUrl    String?
+  previewContentType String?
   isPublic      Boolean   @default(false)
   isPublished   Boolean   @default(false)
   storageFee    Decimal?  @db.Decimal(20, 8)
@@ -78,6 +80,7 @@ model Content {
   contentType       String
   walrusBlobId      String
   previewCid        String?
+  previewContentType String?
   streamPrice       BigInt   @default(0)
   citePrice         BigInt   @default(0)
   licensePrice      BigInt   @default(0)

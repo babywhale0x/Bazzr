@@ -1,7 +1,7 @@
-import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { WalrusClient } from '@mysten/walrus';
+import { suiClient } from './sui';
 
 // Lazy-initialised client
 let _walrusClient: WalrusClient | null = null;
@@ -11,14 +11,6 @@ async function getWalrusClient() {
 
   try {
     const isMainnet = process.env.SUI_NETWORK === 'mainnet';
-    const suiUrl = isMainnet
-      ? 'https://sui-mainnet.gateway.tatum.io'
-      : 'https://sui-testnet.gateway.tatum.io';
-
-    const suiClient = new SuiJsonRpcClient({
-      url: suiUrl,
-      network: isMainnet ? 'mainnet' : 'testnet'
-    });
 
     _walrusClient = new WalrusClient({
       network: isMainnet ? 'mainnet' : 'testnet',

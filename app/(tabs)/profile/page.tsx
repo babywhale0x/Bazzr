@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
 import { 
   User, ExternalLink, Copy, History, Download, Eye, Lock, 
   Crown, Play, Image as ImageIcon, FileText, Music, BarChart2,
   Package, DollarSign, Tag, Check, X, Loader2, ArrowUpRight, ArrowDownLeft,
   HardDrive, Clock, Receipt, Shield
 } from 'lucide-react';
-import { formatSui, suiClient, WAL_TOKEN_ADDRESS } from '@/lib/sui';
+import { formatSui, WAL_TOKEN_ADDRESS } from '@/lib/sui';
 import { FiatOnramp } from '@/components/wallet/FiatOnramp';
 import CertificateModal from '@/components/CertificateModal';
 import toast from 'react-hot-toast';
@@ -32,6 +32,7 @@ interface MyContent {
   isPublished: boolean;
   encrypted: boolean;
   previewUrl: string | null;
+  previewContentType?: string | null;
   createdAt: string;
   contentId: string | null;
   storageFee: string | null;
@@ -50,6 +51,7 @@ interface PurchasedItem {
       name: string;
       contentType: string;
       previewUrl: string | null;
+      previewContentType?: string | null;
       blobId: string;
     }>;
   };
@@ -83,6 +85,7 @@ function formatBytes(bytes: string | number) {
 
 export default function ProfilePage() {
   const account = useCurrentAccount();
+  const suiClient = useSuiClient();
   const connected = !!account;
   const [activeTab, setActiveTab] = useState<'items' | 'purchases' | 'history'>('items');
   const [showFundModal, setShowFundModal] = useState(false);
@@ -99,6 +102,11 @@ export default function ProfilePage() {
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
 
+  // Tatum Data states
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [suiUsdRate, setSuiUsdRate] = useState<number | null>(null);
+
   // For toggle operations
   const [togglingFileId, setTogglingFileId] = useState<string | null>(null);
 
@@ -114,10 +122,39 @@ export default function ProfilePage() {
     }
   }, [connected, account]);
 
+  const fetchExchangeRate = async () => {
+    try {
+      const res = await fetch('/api/tatum/exchange-rate?symbol=SUI&basePair=USD');
+      if (res.ok) {
+        const data = await res.json();
+        setSuiUsdRate(data.value);
+      }
+    } catch (e) {
+      console.error('Failed to fetch SUI exchange rate via Tatum API:', e);
+    }
+  };
+
+  const fetchTransactions = async (address: string) => {
+    setIsLoadingTransactions(true);
+    try {
+      const res = await fetch(`/api/tatum/transactions?address=${address}&limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch SUI transactions via Tatum RPC API:', e);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
   const loadAllData = async () => {
     if (!account) return;
     const addr = account.address.toString();
     fetchBalances(addr);
+    fetchExchangeRate();
+    fetchTransactions(addr);
     
     setIsLoadingStats(true);
     setIsLoadingContent(true);
@@ -252,10 +289,15 @@ export default function ProfilePage() {
             <h3 className="text-sm font-medium flex items-center gap-2 text-text-secondary">
               <div className="w-2 h-2 rounded-full bg-primary" /> Sui (SUI)
             </h3>
-            <button onClick={() => fetchBalances(shortAddr!)} className="text-xs font-medium text-accent hover:underline">Refresh</button>
+            <button onClick={() => { fetchBalances(shortAddr!); fetchExchangeRate(); }} className="text-xs font-medium text-accent hover:underline">Refresh</button>
           </div>
-          <div className="text-3xl font-medium tracking-tight">
+          <div className="text-3xl font-medium tracking-tight flex items-baseline gap-2 flex-wrap">
             {isLoadingBalances ? <div className="h-9 w-32 skeleton rounded" /> : (aptBalance !== null ? formatSui(aptBalance) : '0 SUI')}
+            {aptBalance !== null && suiUsdRate !== null && !isLoadingBalances && (
+              <span className="text-sm font-normal text-text-secondary">
+                ≈ ${( (aptBalance / 1e9) * suiUsdRate ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+              </span>
+            )}
           </div>
         </div>
 
@@ -269,7 +311,7 @@ export default function ProfilePage() {
             <a href="https://docs.wal.app/" target="_blank" rel="noreferrer" className="text-xs font-medium text-success hover:underline">Get Token</a>
           </div>
           <div className="text-3xl font-medium tracking-tight">
-            {isLoadingBalances ? <div className="h-9 w-32 skeleton rounded" /> : (walrusBalance !== null ? `${(walrusBalance/1e8).toFixed(2)} WAL` : '0 WAL')}
+            {isLoadingBalances ? <div className="h-9 w-32 skeleton rounded" /> : (walrusBalance !== null ? `${walrusBalance.toLocaleString()} WAL` : '0 WAL')}
           </div>
         </div>
 
@@ -381,7 +423,7 @@ export default function ProfilePage() {
                   <div key={file.id} className={`card overflow-hidden transition-all ${file.isPublished ? 'border-border' : 'border-red-500/30 opacity-75'}`}>
                     <div className="h-32 bg-bg relative flex items-center justify-center">
                       {file.previewUrl ? (
-                         file.contentType.startsWith('image/') 
+                         (file.contentType.startsWith('image/') || (file.previewContentType && file.previewContentType.startsWith('image/')))
                            ? <img src={file.previewUrl} className="w-full h-full object-cover" alt="preview" />
                            : getTypeIcon(file.contentType)
                       ) : getTypeIcon(file.contentType)}
@@ -468,7 +510,7 @@ export default function ProfilePage() {
                     <div key={p.purchaseId || p.id || pIdx} className="card overflow-hidden hover-lift flex flex-col">
                       <div className="h-32 relative bg-bg flex items-center justify-center">
                         {firstFile && firstFile.previewUrl ? (
-                           firstFile.contentType.startsWith('image/') 
+                           (firstFile.contentType.startsWith('image/') || (firstFile.previewContentType && firstFile.previewContentType.startsWith('image/')))
                              ? <img src={firstFile.previewUrl} className="w-full h-full object-cover" alt="preview" />
                              : getTypeIcon(firstFile.contentType)
                         ) : (firstFile ? getTypeIcon(firstFile.contentType) : <Package className="w-8 h-8 text-text-muted" />)}
@@ -513,12 +555,85 @@ export default function ProfilePage() {
 
         {/* Tab: History */}
         {activeTab === 'history' && (
-          <div className="card">
-             <div className="p-8 text-center text-text-secondary border-dashed border-2 m-4 rounded-xl">
-               <History className="w-8 h-8 mx-auto mb-3 opacity-50" />
-               <p>Detailed transaction history UI coming soon.</p>
-               <p className="text-xs text-text-muted mt-2">View on-chain explorer for immediate history.</p>
-             </div>
+          <div className="space-y-4">
+            {isLoadingTransactions ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-accent" />
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="text-center py-16 card bg-surface/50 border-dashed">
+                <History className="w-12 h-12 text-text-muted mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No transaction history</h3>
+                <p className="text-text-secondary">Transactions for this address on Tatum Sui RPC gateway will appear here.</p>
+              </div>
+            ) : (
+              <div className="card overflow-hidden">
+                <div className="p-4 border-b border-border bg-surface/50 flex justify-between items-center">
+                  <h3 className="font-medium text-sm text-text-primary">On-Chain Activity (via Tatum)</h3>
+                  <button 
+                    onClick={() => fetchTransactions(shortAddr!)} 
+                    className="text-xs text-accent hover:underline"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <div className="divide-y divide-border">
+                  {transactions.map((tx) => {
+                    const isIncoming = tx.direction === 'incoming';
+                    const txDate = tx.timestampMs ? new Date(Number(tx.timestampMs)) : null;
+                    const explorerUrl = `https://suiscan.xyz/${process.env.NEXT_PUBLIC_SUI_NETWORK === 'mainnet' ? 'mainnet' : 'testnet'}/tx/${tx.digest}`;
+
+                    return (
+                      <div key={tx.digest} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-bg/40 transition-colors gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                            isIncoming ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary'
+                          }`}>
+                            {isIncoming ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                          </div>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium text-sm text-text-primary">
+                                {isIncoming ? 'Received SUI' : 'Sent/Called Smart Contract'}
+                              </span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono uppercase font-semibold ${
+                                tx.status === 'success' ? 'bg-success/15 text-success' : 'bg-red-500/15 text-red-500'
+                              }`}>
+                                {tx.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-text-muted mt-0.5">
+                              <span className="font-mono">{tx.digest.slice(0, 10)}...{tx.digest.slice(-8)}</span>
+                              <span>•</span>
+                              <span>{txDate ? txDate.toLocaleString() : 'Pending'}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-4">
+                          {tx.gasUsed && (
+                            <div className="text-left sm:text-right">
+                              <p className="text-[10px] text-text-muted">Gas Used</p>
+                              <p className="text-xs font-mono text-text-secondary">
+                                {((Number(tx.gasUsed.computationCost || 0) + Number(tx.gasUsed.storageCost || 0)) / 1e9).toFixed(5)} SUI
+                              </p>
+                            </div>
+                          )}
+                          <a 
+                            href={explorerUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="p-2 hover:bg-surface rounded-lg text-text-secondary hover:text-accent transition-colors shrink-0"
+                            title="View transaction on Explorer"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
